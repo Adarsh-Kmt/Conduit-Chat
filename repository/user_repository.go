@@ -12,13 +12,14 @@ import (
 	bson "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type UserRepository interface {
 	CreateNewUser(*types.User) *types.APIError
 	SendChatRequest(*types.ChatRequest) (string, *types.APIError)
-	GetIncomingChatRequestList(string) ([]types.ChatRequest, error)
-	GetOutgoingChatRequestList(string) ([]types.ChatRequest, error)
+	GetIncomingChatRequestList(primitive.ObjectID) ([]types.ChatRequest, *types.APIError)
+	GetOutgoingChatRequestList(primitive.ObjectID) ([]types.ChatRequest, *types.APIError)
 	GetUserCredentials(*types.LoginUserRequest) (string, error)
 	GetUserByUserObjectId(primitive.ObjectID) (*types.User, error)
 }
@@ -65,13 +66,42 @@ func (UserRepository *UserRepositoryImpl) GetUserCredentials(loginRequest *types
 
 }
 
-func (userRepository *UserRepositoryImpl) GetOutgoingChatRequestList(userObjectId string) ([]types.ChatRequest, error) {
+func (userRepository *UserRepositoryImpl) GetOutgoingChatRequestList(userObjectId primitive.ObjectID) ([]types.ChatRequest, *types.APIError) {
 
-	return nil, nil
+	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+	projection := bson.M{"OutgoingChatRequestList": 1}
+
+	filter := bson.M{"_id": userObjectId}
+
+	var outgoingChatRequestListResponse types.OutgoingChatRequestListResponse
+
+	err := UserCollection.FindOne(context.TODO(), filter, options.FindOne().SetProjection(projection)).Decode(&outgoingChatRequestListResponse)
+
+	if err == mongo.ErrNoDocuments {
+
+		return nil, &types.APIError{Error: "No outgoing chat requests.", ErrorStatus: 404}
+	}
+
+	return outgoingChatRequestListResponse.OutgoingChatRequestList, nil
 }
-func (userRepository *UserRepositoryImpl) GetIncomingChatRequestList(userObjectId string) ([]types.ChatRequest, error) {
+func (userRepository *UserRepositoryImpl) GetIncomingChatRequestList(userObjectId primitive.ObjectID) ([]types.ChatRequest, *types.APIError) {
 
-	return nil, nil
+	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+
+	filter := bson.M{"_id": userObjectId}
+
+	projection := bson.M{"IncomingChatRequestList": 1}
+
+	var incomingChatRequestListResponse types.IncomingChatRequestListResponse
+
+	err := UserCollection.FindOne(context.TODO(), filter, options.FindOne().SetProjection(projection)).Decode(&incomingChatRequestListResponse)
+
+	if err == mongo.ErrNoDocuments {
+
+		return nil, &types.APIError{Error: "no incoming chat requests.", ErrorStatus: 404}
+	}
+
+	return incomingChatRequestListResponse.IncomingChatRequestList, nil
 }
 
 func (userRepository *UserRepositoryImpl) SendChatRequest(chatRequest *types.ChatRequest) (string, *types.APIError) {
