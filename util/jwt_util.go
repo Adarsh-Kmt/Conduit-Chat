@@ -8,19 +8,11 @@ import (
 	"fmt"
 	"log"
 
-	"encoding/json"
-
 	"github.com/Adarsh-Kmt/chatapp/types"
 
 	jwt "github.com/golang-jwt/jwt/v5"
 )
 
-func WriteJSON(w http.ResponseWriter, status int, body any) error {
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(body)
-}
 func MakeJWTAuthHttpHandlerFunc(f http.HandlerFunc) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
