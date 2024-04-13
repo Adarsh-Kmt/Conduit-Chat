@@ -25,32 +25,14 @@ func NewUserControllerInstance(UserServiceInstance service.UserService) *UserCon
 }
 func (userController *UserController) Run(router *mux.Router) *mux.Router {
 
-	router.HandleFunc("/register", MakeHttpHandlerFunc(userController.HandleRegisterUser))
-	router.HandleFunc("/chatRequest", util.MakeJWTAuthHttpHandlerFunc(MakeHttpHandlerFunc(userController.HandleSendChatRequest)))
-	router.HandleFunc("/login", MakeHttpHandlerFunc(userController.HandleLoginUser))
+	router.HandleFunc("/register", util.MakeHttpHandlerFunc(userController.HandleRegisterUser))
+	router.HandleFunc("/chatRequest", util.MakeJWTAuthHttpHandlerFunc(util.MakeHttpHandlerFunc(userController.HandleSendChatRequest)))
+	router.HandleFunc("/login", util.MakeHttpHandlerFunc(userController.HandleLoginUser))
+	router.HandleFunc("/incomingChatRequest", util.MakeJWTAuthHttpHandlerFunc(util.MakeHttpHandlerFunc(userController.GetIncomingChatRequestList)))
+	router.HandleFunc("/outgoingChatRequest", util.MakeJWTAuthHttpHandlerFunc(util.MakeHttpHandlerFunc(userController.GetOutgoingChatRequestList)))
 
 	return router
 	//http.ListenAndServe(s.ListAddr, userrouter)
-}
-
-type ApiFunc func(http.ResponseWriter, *http.Request) *types.APIError
-
-func MakeHttpHandlerFunc(f ApiFunc) http.HandlerFunc {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		if APIError := f(w, r); APIError != nil {
-
-			WriteJSON(w, APIError.ErrorStatus, map[string]string{"error": APIError.Error})
-		}
-	}
-}
-
-func WriteJSON(w http.ResponseWriter, status int, body any) error {
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(body)
 }
 
 func (userController *UserController) HandleRegisterUser(w http.ResponseWriter, r *http.Request) *types.APIError {
@@ -69,7 +51,7 @@ func (userController *UserController) HandleRegisterUser(w http.ResponseWriter, 
 		return ApiError
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]string{"SuccessMessage": "you have successfully registered."})
+	util.WriteJSON(w, http.StatusOK, map[string]string{"SuccessMessage": "you have successfully registered."})
 
 	return nil
 
@@ -93,7 +75,7 @@ func (userController *UserController) HandleLoginUser(w http.ResponseWriter, r *
 		return ApiError
 	}
 
-	WriteJSON(w, 200, map[string]string{"SuccessMessage": JwtToken})
+	util.WriteJSON(w, 200, map[string]string{"SuccessMessage": JwtToken})
 	return nil
 }
 func (userController *UserController) HandleSendChatRequest(w http.ResponseWriter, r *http.Request) *types.APIError {
@@ -132,7 +114,62 @@ func (userController *UserController) HandleSendChatRequest(w http.ResponseWrite
 		return ApiError
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]string{"SuccessMessage": ChatRequestObjectId})
+	util.WriteJSON(w, http.StatusOK, map[string]string{"SuccessMessage": ChatRequestObjectId})
 
 	return nil
+}
+
+func (userController *UserController) GetIncomingChatRequestList(w http.ResponseWriter, r *http.Request) *types.APIError {
+
+	JwtToken := r.Header.Get("Auth")
+
+	ValidatedUserObjectIdString, err := util.GetUserObjectIdFromJWT(JwtToken)
+
+	if err != nil {
+		return &types.APIError{Error: err.Error(), ErrorStatus: 500}
+	}
+
+	ValidatedUserObjectId, err := primitive.ObjectIDFromHex(ValidatedUserObjectIdString)
+
+	if err != nil {
+
+		return &types.APIError{Error: "internal error 500", ErrorStatus: 500}
+	}
+
+	IncomingChatRequestList, ApiError := userController.UserService.GetIncomingChatRequestList(ValidatedUserObjectId)
+
+	if ApiError != nil {
+
+		return ApiError
+	}
+
+	util.WriteJSON(w, 200, map[string][]types.ChatRequest{"SuccessMessage": IncomingChatRequestList})
+
+	return nil
+
+}
+
+func (userController *UserController) GetOutgoingChatRequestList(w http.ResponseWriter, r *http.Request) *types.APIError {
+
+	JwtToken := r.Header.Get("Auth")
+
+	ValidatedUserObjectIdString, err := util.GetUserObjectIdFromJWT(JwtToken)
+
+	if err != nil {
+		return &types.APIError{Error: err.Error(), ErrorStatus: 500}
+	}
+
+	ValidatedUserObjectId, err := primitive.ObjectIDFromHex(ValidatedUserObjectIdString)
+
+	OutgoingChatRequestList, ApiError := userController.UserService.GetOutgoingChatRequestList(ValidatedUserObjectId)
+
+	if ApiError != nil {
+
+		return ApiError
+	}
+
+	util.WriteJSON(w, 200, map[string][]types.ChatRequest{"SuccessMessage": OutgoingChatRequestList})
+
+	return nil
+
 }
