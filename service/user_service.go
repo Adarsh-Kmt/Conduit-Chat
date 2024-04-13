@@ -14,7 +14,8 @@ type UserService interface {
 	RegisterUser(*types.RegisterUserRequest) *types.APIError
 	LoginUser(*types.LoginUserRequest) (string, *types.APIError)
 	SendChatRequest(primitive.ObjectID, *types.ChatRequest) (string, *types.APIError)
-	GetOutgoingChatRequestList(string) []types.ChatRequest
+	GetOutgoingChatRequestList(primitive.ObjectID) ([]types.ChatRequest, *types.APIError)
+	GetIncomingChatRequestList(primitive.ObjectID) ([]types.ChatRequest, *types.APIError)
 }
 
 type UserServiceImpl struct {
@@ -97,7 +98,25 @@ func (userService *UserServiceImpl) SendChatRequest(userObjectId primitive.Objec
 	return NewChatRequestObjectId, nil
 }
 
-func (userService *UserServiceImpl) GetOutgoingChatRequestList(string) []types.ChatRequest {
+func (userService *UserServiceImpl) GetOutgoingChatRequestList(userObjectId primitive.ObjectID) ([]types.ChatRequest, *types.APIError) {
 
-	return nil
+	OutgoingChatRequestList, ApiError := userService.UserRepository.GetOutgoingChatRequestList(userObjectId)
+
+	if ApiError != nil {
+
+		return nil, ApiError
+	}
+
+	return OutgoingChatRequestList, nil
+}
+
+func (userService *UserServiceImpl) GetIncomingChatRequestList(userObjectId primitive.ObjectID) ([]types.ChatRequest, *types.APIError) {
+
+	IncomingChatRequestList, ApiError := userService.UserRepository.GetIncomingChatRequestList(userObjectId)
+	if ApiError != nil {
+
+		return nil, ApiError
+	}
+
+	return IncomingChatRequestList, nil
 }
