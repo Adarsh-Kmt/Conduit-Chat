@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Adarsh-Kmt/chatapp/types"
+	"github.com/Adarsh-Kmt/chatapp/util"
+
+	"github.com/Adarsh-Kmt/chatapp/controller"
 	// "fmt"
 	"net/http"
 
@@ -12,10 +16,26 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+/*
+flow:
+
+if A wants to send a message to B, message Request must include chatId and message string.
+
+2 tabs in application, one for chats, and other for chat requests.
+
+if A sends chat request to B, and B accepts, Both must be returned the chatObjectId corresponding to the chat.
+
+this is simple for the user that accepts the request. a response to the accept message is the chatId.
+
+for the person that sends the chat request, he will need to go to the chat request tab to see if the request has been accepted,
+if chat request has been accepted, clicking on the chat request gets him the chatId,
+otherwise response should be sent asking him to wait for receiver to accept request.
+*/
 type APIServer struct {
-	ListAddr   string
-	Storage    store
-	activeConn map[string]*websocket.Conn
+	UserController controller.UserController
+	ListAddr       string
+	Storage        store
+	activeConn     map[string]*websocket.Conn
 }
 
 func NewAPIServer(listAddr string, storage store) *APIServer {
@@ -31,9 +51,9 @@ func NewAPIServer(listAddr string, storage store) *APIServer {
 func (s *APIServer) Run() {
 
 	router := mux.NewRouter()
-	router.HandleFunc("/register", MakeHttpHandlerFunc(s.HandleRegisterUser))
-	router.HandleFunc("/chatRequest", MakeJWTAuthHttpHandlerFunc(MakeHttpHandlerFunc(s.HandlerSendChatRequest)))
-	router.HandleFunc("/message", MakeJWTAuthHttpHandlerFunc(MakeHttpHandlerFunc(s.HandleSendMessage)))
+	router.HandleFunc("/register", MakeHttpHandlerFunc(s.UserController.HandleRegisterUser))
+	//router.HandleFunc("/chatRequest", MakeJWTAuthHttpHandlerFunc(MakeHttpHandlerFunc(sUser.HandleSendChatRequest)))
+	//router.HandleFunc("/message", MakeJWTAuthHttpHandlerFunc(MakeHttpHandlerFunc(s.HandleSendMessage)))
 	http.ListenAndServe(s.ListAddr, router)
 }
 
@@ -57,7 +77,7 @@ func (s *APIServer) HandleSendMessage(w http.ResponseWriter, r *http.Request) *A
 
 	JWTToken := r.Header.Get("Auth")
 
-	UserObjectId, err := getUserObjectIdFromJWT(JWTToken)
+	UserObjectId, err := util.GetUserObjectIdFromJWT(JWTToken)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -80,7 +100,7 @@ func (s *APIServer) HandleSendMessage(w http.ResponseWriter, r *http.Request) *A
 			return &APIError{Error: err.Error(), ErrorStatus: 500}
 
 		}
-		var message MessageRequest
+		var message types.MessageRequest
 
 		if err := json.Unmarshal([]byte(messageByteArray), &message); err != nil {
 			log.Println("Error unmarshalling message:", err)
@@ -101,55 +121,7 @@ func (s *APIServer) HandleSendMessage(w http.ResponseWriter, r *http.Request) *A
 
 }
 
-func (s *APIServer) HandleRegisterUser(w http.ResponseWriter, r *http.Request) *APIError {
-
-	request := new(RegisterUserRequest)
-	//var request bson.M
-	err := json.NewDecoder(r.Body).Decode(request)
-
-	if err != nil {
-
-		return &APIError{Error: "error in parsing POST request body.", ErrorStatus: 500}
-	}
-
-	newUser := CreateNewUser(request)
-
-	JWTToken, ApiError := s.Storage.RegisterUser(newUser)
-
-	if ApiError != nil {
-		return ApiError
-	}
-
-	WriteJSON(w, http.StatusOK, JWTToken)
-
-	return nil
-
-}
-
-func (s *APIServer) HandlerSendChatRequest(w http.ResponseWriter, r *http.Request) *APIError {
-
-	request := new(ChatRequest)
-
-	err := json.NewDecoder(r.Body).Decode(request)
-
-	if err != nil {
-
-		return &APIError{Error: "error in parsing POST request body.", ErrorStatus: 500}
-	}
-
-	ChatRequestObjectId, ApiError := s.Storage.SendChatRequest(request)
-
-	if ApiError != nil {
-
-		return ApiError
-	}
-
-	WriteJSON(w, http.StatusOK, ChatRequestObjectId)
-
-	return nil
-}
-
-type ApiFunc func(http.ResponseWriter, *http.Request) *APIError
+type ApiFunc func(http.ResponseWriter, *http.Request) *types.APIError
 
 type APIError struct {
 	Error       string
@@ -176,7 +148,7 @@ func MakeJWTAuthHttpHandlerFunc(f http.HandlerFunc) http.HandlerFunc {
 
 		// }
 		log.Println(tokenString)
-		_, err := ValidateJWTToken(tokenString)
+		_, err := util.ValidateJWTToken(tokenString)
 
 		if err != nil {
 
