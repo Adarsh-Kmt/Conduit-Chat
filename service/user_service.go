@@ -16,6 +16,7 @@ type UserService interface {
 	SendChatRequest(primitive.ObjectID, *types.ChatRequest) (string, *types.APIError)
 	GetOutgoingChatRequestList(primitive.ObjectID) ([]types.ChatRequest, *types.APIError)
 	GetIncomingChatRequestList(primitive.ObjectID) ([]types.ChatRequest, *types.APIError)
+	//AcceptChatRequest(primitive.ObjectID, types.AcceptChatRequest) *types.APIError
 }
 
 type UserServiceImpl struct {
