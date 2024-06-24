@@ -32,14 +32,28 @@ func CreateUserBSON(NewUser *types.User) bson.D {
 	}
 }
 
-func CreateChatRequestBSON(request *types.ChatRequest) (string, bson.D) {
+func CreateChatRequestBSONS(request *types.ChatRequest) (string, bson.D, string, bson.D) {
 
-	chatRequestId := primitive.NewObjectID()
-	return chatRequestId.Hex(), bson.D{
-		{Key: "_id", Value: chatRequestId},
+	senderChatRequestId := primitive.NewObjectID()
+	receiverChatRequestId := primitive.NewObjectID()
+
+	senderChatRequestBSON := bson.D{
+		{Key: "_id", Value: senderChatRequestId},
+		{Key: "ReferenceId", Value: receiverChatRequestId},
 		{Key: "SenderObjectId", Value: request.SenderId},
 		{Key: "ReceiverObjectId", Value: request.ReceiverId},
 		{Key: "SentOnDate", Value: time.Now()},
 		{Key: "RequestAccepted", Value: false},
 	}
+
+	receiverChatRequestBSON := bson.D{
+		{Key: "_id", Value: receiverChatRequestId},
+		{Key: "ReferenceId", Value: senderChatRequestId},
+		{Key: "SenderObjectId", Value: request.SenderId},
+		{Key: "ReceiverObjectId", Value: request.ReceiverId},
+		{Key: "SentOnDate", Value: time.Now()},
+		{Key: "RequestAccepted", Value: false},
+	}
+
+	return senderChatRequestId.Hex(), senderChatRequestBSON, receiverChatRequestId.Hex(), receiverChatRequestBSON
 }
