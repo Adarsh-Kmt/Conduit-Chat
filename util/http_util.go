@@ -7,9 +7,9 @@ import (
 	"github.com/Adarsh-Kmt/chatapp/types"
 )
 
-type ApiFunc func(http.ResponseWriter, *http.Request) *types.APIError
+type HttpFunc func(http.ResponseWriter, *http.Request) *types.APIError
 
-func MakeHttpHandlerFunc(f ApiFunc) http.HandlerFunc {
+func MakeHttpHandlerFunc(f HttpFunc) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
