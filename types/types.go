@@ -16,16 +16,6 @@ type User struct {
 	IncomingChatRequestList []ChatRequest      `json:"incomingChatRequestList" bson:"IncomingChatRequestList"`
 }
 
-type RegisterUserRequest struct {
-	Name     string `json:"name"`
-	Password string `json:"password"`
-}
-
-type LoginUserRequest struct {
-	Name     string `json:"name"`
-	Password string `json:"password"`
-}
-
 type Chat struct {
 	ChatId      primitive.ObjectID `json:"chatId" bson:"_id,omitempty"`
 	User1       primitive.ObjectID `json:"user1ObjectId" bson:"User1ObjectId"`
@@ -38,6 +28,7 @@ type ChatSummary struct {
 	User            primitive.ObjectID `json:"userObjectId" bson:"UserObjectId"`
 	ChatReferenceId primitive.ObjectID `json:"chatReferenceId" bson:"ChatReferenceId"`
 }
+
 type Message struct {
 	MessageId  primitive.ObjectID `json:"messageId" bson:"_id,omitempty"`
 	SenderId   primitive.ObjectID `json:"senderId" bson:"SenderObjectId"`
@@ -49,25 +40,13 @@ type Message struct {
 type ChatRequest struct {
 	ChatRequestId   primitive.ObjectID `json:"chatRequestId" bson:"_id,omitempty"`
 	SenderId        primitive.ObjectID `json:"senderId" bson:"SenderObjectId"`
+	ReferenceId     primitive.ObjectID `json:"referenceId" bson:"ReferenceId"`
 	ReceiverId      primitive.ObjectID `json:"receiverId" bson:"ReceiverObjectId"`
 	SentOnDate      time.Time          `json:"sentOnDate" bson:"SentOnDate"`
 	RequestAccepted bool               `json:"requestAccepted" bson:"RequestAccepted"`
 }
 
-type MessageRequest struct {
-	ReceiverId primitive.ObjectID `json:"receiverId"`
-	Message    string             `json:"message"`
-}
-
 type APIError struct {
 	Error       string
 	ErrorStatus int
-}
-
-type OutgoingChatRequestListResponse struct {
-	OutgoingChatRequestList []ChatRequest `json:"outgoingChatRequestList" bson:"OutgoingChatRequestList"`
-}
-
-type IncomingChatRequestListResponse struct {
-	IncomingChatRequestList []ChatRequest `json:"incomingChatRequestList" bson:"IncomingChatRequestList"`
 }
