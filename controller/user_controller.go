@@ -5,22 +5,31 @@ import (
 	"fmt"
 	"net/http"
 
+	//"github.com/Adarsh-Kmt/chatapp/data"
 	"github.com/Adarsh-Kmt/chatapp/service"
 	"github.com/Adarsh-Kmt/chatapp/types"
 	"github.com/Adarsh-Kmt/chatapp/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 type UserController struct {
-	UserService service.UserService
+	UserService    service.UserService
+	MessageService service.MessageService
 }
 
-func NewUserControllerInstance(UserServiceInstance service.UserService) *UserController {
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+func NewUserControllerInstance(UserServiceInstance service.UserService, MessageServiceInstance service.MessageService) *UserController {
 
 	return &UserController{
-		UserService: UserServiceInstance,
+		UserService:    UserServiceInstance,
+		MessageService: MessageServiceInstance,
 	}
 }
 func (userController *UserController) Run(router *mux.Router) *mux.Router {
@@ -30,6 +39,8 @@ func (userController *UserController) Run(router *mux.Router) *mux.Router {
 	router.HandleFunc("/login", util.MakeHttpHandlerFunc(userController.HandleLoginUser))
 	router.HandleFunc("/incomingChatRequest", util.MakeJWTAuthHttpHandlerFunc(util.MakeHttpHandlerFunc(userController.GetIncomingChatRequestList)))
 	router.HandleFunc("/outgoingChatRequest", util.MakeJWTAuthHttpHandlerFunc(util.MakeHttpHandlerFunc(userController.GetOutgoingChatRequestList)))
+	router.HandleFunc("/message", util.MakeJWTAuthHttpHandlerFunc(util.MakeHttpHandlerFunc(userController.sendMessage)))
+	//router.HandleFunc("/chatRequest/accept", util.MakeJWTAuthHttpHandlerFunc(util.MakeHttpHandlerFunc(userController.AcceptChatRequest)))
 
 	return router
 	//http.ListenAndServe(s.ListAddr, userrouter)
@@ -161,6 +172,11 @@ func (userController *UserController) GetOutgoingChatRequestList(w http.Response
 
 	ValidatedUserObjectId, err := primitive.ObjectIDFromHex(ValidatedUserObjectIdString)
 
+	if err != nil {
+
+		return &types.APIError{Error: "internal server error.", ErrorStatus: 500}
+	}
+
 	OutgoingChatRequestList, ApiError := userController.UserService.GetOutgoingChatRequestList(ValidatedUserObjectId)
 
 	if ApiError != nil {
@@ -173,3 +189,63 @@ func (userController *UserController) GetOutgoingChatRequestList(w http.Response
 	return nil
 
 }
+
+func (userController *UserController) sendMessage(w http.ResponseWriter, r *http.Request) *types.APIError {
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+
+	if err != nil {
+		return &types.APIError{Error: "error while switching protocols", ErrorStatus: 500}
+	}
+	JwtToken := r.Header.Get("Auth")
+
+	userObjectId, err := util.GetUserObjectIdFromJWT(JwtToken)
+
+	if err != nil {
+
+		return &types.APIError{Error: err.Error(), ErrorStatus: 500}
+	}
+
+	userController.MessageService.SendMessage(conn, userObjectId)
+
+	return nil
+
+}
+
+// func (userController *UserController) AcceptChatRequest(w http.ResponseWriter, r *http.Request) *types.APIError {
+
+// 	var request types.AcceptChatRequest
+
+// 	err := json.NewDecoder(r.Body).Decode(&request)
+
+// 	if err != nil {
+
+// 		return &types.APIError{Error: "could not parse POST request body.", ErrorStatus: 500}
+// 	}
+
+// 	JwtToken := r.Header.Get("Auth")
+
+// 	UserObjectIdString, err := util.GetUserObjectIdFromJWT(JwtToken)
+
+// 	if err != nil {
+
+// 		return &types.APIError{Error: "internal server error.", ErrorStatus: 500}
+// 	}
+
+// 	UserObjectId, err := primitive.ObjectIDFromHex(UserObjectIdString)
+
+// 	if err != nil {
+
+// 		return &types.APIError{Error: "internal server error.", ErrorStatus: 500}
+// 	}
+
+// 	ApiError := userController.UserService.AcceptChatRequest(UserObjectId, request)
+
+// 	if ApiError != nil {
+
+// 		return ApiError
+// 	}
+
+// 	util.WriteJSON(w, 200, map[string]string{"SuccessMessage": "chat request accepted successfully."})
+
+// }
