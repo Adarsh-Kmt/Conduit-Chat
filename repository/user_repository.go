@@ -22,6 +22,7 @@ type UserRepository interface {
 	GetOutgoingChatRequestList(primitive.ObjectID) ([]types.ChatRequest, *types.APIError)
 	GetUserCredentials(*types.LoginUserRequest) (string, error)
 	GetUserByUserObjectId(primitive.ObjectID) (*types.User, error)
+	//AcceptChatRequest(primitive.ObjectID, types.AcceptChatRequest) (string, *types.APIError)
 }
 
 type UserRepositoryImpl struct {
@@ -37,7 +38,7 @@ func NewUserRepositoryImplInstance(MongoDBInstance *database.MongoDBStore) *User
 }
 func (userRepository *UserRepositoryImpl) CreateNewUser(NewUser *types.User) *types.APIError {
 
-	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+	UserCollection := userRepository.Mongo.MongoDBClient.Database("chatapp").Collection("ChatUser")
 
 	_, err := UserCollection.InsertOne(context.TODO(), data.CreateUserBSON(NewUser))
 
@@ -52,7 +53,7 @@ func (userRepository *UserRepositoryImpl) CreateNewUser(NewUser *types.User) *ty
 
 func (UserRepository *UserRepositoryImpl) GetUserCredentials(loginRequest *types.LoginUserRequest) (string, error) {
 
-	UserCollection := UserRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+	UserCollection := UserRepository.Mongo.MongoDBClient.Database("chatapp").Collection("ChatUser")
 
 	var registeredUser types.User
 	err := UserCollection.FindOne(context.TODO(), bson.M{"Name": loginRequest.Name, "Password": loginRequest.Password}).Decode(&registeredUser)
@@ -68,7 +69,7 @@ func (UserRepository *UserRepositoryImpl) GetUserCredentials(loginRequest *types
 
 func (userRepository *UserRepositoryImpl) GetOutgoingChatRequestList(userObjectId primitive.ObjectID) ([]types.ChatRequest, *types.APIError) {
 
-	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+	UserCollection := userRepository.Mongo.MongoDBClient.Database("chatapp").Collection("ChatUser")
 	projection := bson.M{"OutgoingChatRequestList": 1}
 
 	filter := bson.M{"_id": userObjectId}
@@ -86,7 +87,7 @@ func (userRepository *UserRepositoryImpl) GetOutgoingChatRequestList(userObjectI
 }
 func (userRepository *UserRepositoryImpl) GetIncomingChatRequestList(userObjectId primitive.ObjectID) ([]types.ChatRequest, *types.APIError) {
 
-	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+	UserCollection := userRepository.Mongo.MongoDBClient.Database("chatapp").Collection("ChatUser")
 
 	filter := bson.M{"_id": userObjectId}
 
@@ -107,10 +108,9 @@ func (userRepository *UserRepositoryImpl) GetIncomingChatRequestList(userObjectI
 func (userRepository *UserRepositoryImpl) SendChatRequest(chatRequest *types.ChatRequest) (string, *types.APIError) {
 
 	fmt.Println("entered repository.")
-	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+	UserCollection := userRepository.Mongo.MongoDBClient.Database("chatapp").Collection("ChatUser")
 
-	SenderChatRequestObjectIdString, SenderChatRequestBSON := data.CreateChatRequestBSON(chatRequest)
-	_, ReceiverChatRequestBSON := data.CreateChatRequestBSON(chatRequest)
+	SenderChatRequestObjectIdString, SenderChatRequestBSON, _, ReceiverChatRequestBSON := data.CreateChatRequestBSONS(chatRequest)
 
 	SenderUpdateResult, err := UserCollection.UpdateOne(context.TODO(), bson.M{"_id": chatRequest.SenderId}, bson.M{"$push": bson.M{"OutgoingChatRequestList": SenderChatRequestBSON}})
 
@@ -145,7 +145,7 @@ func (userRepository *UserRepositoryImpl) SendChatRequest(chatRequest *types.Cha
 
 func (userRepository *UserRepositoryImpl) GetUserByUserObjectId(userObjectId primitive.ObjectID) (*types.User, error) {
 
-	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+	UserCollection := userRepository.Mongo.MongoDBClient.Database("chatapp").Collection("ChatUser")
 
 	var User types.User
 
@@ -158,3 +158,29 @@ func (userRepository *UserRepositoryImpl) GetUserByUserObjectId(userObjectId pri
 
 	return &User, nil
 }
+
+// func (userRepository *UserRepositoryImpl) AcceptChatRequest(userObjectId primitive.ObjectID, request types.AcceptChatRequest) (string, *types.APIError) {
+
+// 	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+
+// }
+
+// func (userRepository *UserRepositoryImpl) AcceptChatRequestForReceiver(userObjectId primitive.ObjectID, chatrequestObjectId primitive.ObjectID) (string, *types.APIError) {
+
+// 	UserCollection := userRepository.Mongo.DB.Database("chatapp").Collection("ChatUser")
+
+// 	var ChatRequest types.ChatRequest
+
+// 	filter := bson.M{
+// 		"_id": userObjectId,
+// 		"IncomingChatRequestList": bson.M{
+// 			"$elemMatch": bson.M{"_id": chatrequestObjectId},
+// 		},
+// 	}
+// 	err := UserCollection.FindOneAndDelete(context.TODO(), filter, nil).Decode(&ChatRequest)
+
+// 	if err == mongo.ErrNoDocuments {
+
+// 		return "", &types.APIError{Error: "chat request not found.", ErrorStatus: 404}
+// 	}
+// }

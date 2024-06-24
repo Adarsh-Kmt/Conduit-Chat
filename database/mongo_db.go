@@ -11,7 +11,7 @@ import (
 )
 
 type MongoDBStore struct {
-	DB *mongo.Client
+	MongoDBClient *mongo.Client
 }
 
 func NewMongoDBInstance() (*MongoDBStore, error) {
@@ -23,7 +23,7 @@ func NewMongoDBInstance() (*MongoDBStore, error) {
 		panic(err)
 	}
 
-	MongoDBInstance.DB = client
+	MongoDBInstance.MongoDBClient = client
 
 	err = MongoDBInstance.init()
 
@@ -41,14 +41,14 @@ func (ms *MongoDBStore) init() error {
 
 	for i := range CollectionNames {
 
-		err := ms.DB.Database("chatapp").CreateCollection(context.TODO(), CollectionNames[i])
+		err := ms.MongoDBClient.Database("chatapp").CreateCollection(context.TODO(), CollectionNames[i])
 
 		if err != nil {
 			return fmt.Errorf("error occured while initializing database.")
 		}
 	}
 
-	collectionNames, err := ms.DB.Database("chatapp").ListCollectionNames(context.TODO(), bson.D{})
+	collectionNames, err := ms.MongoDBClient.Database("chatapp").ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
 		log.Fatal(err)
 	}
